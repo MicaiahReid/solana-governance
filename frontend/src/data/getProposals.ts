@@ -18,9 +18,9 @@ export const getProposals = async (
   endpoint: string,
   filters:
     | {
-        voting?: boolean;
-        finalized?: boolean;
-      }
+      voting?: boolean;
+      finalized?: boolean;
+    }
     | undefined,
   epochInfo: EpochInfo,
   voteAccountsData: RawVoteAccountsData,

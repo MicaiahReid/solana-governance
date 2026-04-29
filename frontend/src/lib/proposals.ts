@@ -35,6 +35,41 @@ export interface GetProposalStatusParams {
   epochConstants: EpochConstants;
 }
 
+export interface ProposalPhaseEpochs {
+  supportStartEpoch: number;
+  supportEndEpoch: number;
+  phaseBaseEpoch: number;
+  discussionStartEpoch: number;
+  discussionEndEpoch: number;
+  snapshotEpoch: number;
+}
+
+export function getProposalPhaseEpochs(
+  creationEpoch: number,
+  epochs: EpochConstants,
+): ProposalPhaseEpochs {
+  // Support phase always uses creationEpoch
+  const supportStartEpoch = creationEpoch;
+  // Threshold check happens at creationEpoch + SUPPORT_EPOCHS + 1
+  // (support phase is epochs [creationEpoch, creationEpoch + SUPPORT_EPOCHS], threshold check at creationEpoch + SUPPORT_EPOCHS + 1)
+  const supportEndEpoch = creationEpoch + epochs.SUPPORT_EPOCHS + 1;
+  // When voting === false, calculate phases based on creationEpoch
+  const phaseBaseEpoch = supportEndEpoch;
+  const discussionStartEpoch = phaseBaseEpoch;
+  const discussionEndEpoch = phaseBaseEpoch + epochs.DISCUSSION_EPOCHS;
+  const snapshotEpoch =
+    phaseBaseEpoch + epochs.DISCUSSION_EPOCHS + epochs.SNAPSHOT_EPOCHS;
+
+  return {
+    supportStartEpoch,
+    supportEndEpoch,
+    phaseBaseEpoch,
+    discussionStartEpoch,
+    discussionEndEpoch,
+    snapshotEpoch,
+  };
+}
+
 /**
  * Determines proposal status based on epoch-based rules:
  *
@@ -85,20 +120,13 @@ export const getProposalStatus = ({
     return "finalized";
   }
 
-  // Support phase always uses creationEpoch
-  const supportStartEpoch = creationEpoch; // epoch 800 for creationEpoch 800
-  // Threshold check happens at creationEpoch + SUPPORT_EPOCHS + 1
-  // (support phase is epochs [creationEpoch, creationEpoch + SUPPORT_EPOCHS], threshold check at creationEpoch + SUPPORT_EPOCHS + 1)
-  const supportEndEpoch = creationEpoch + epochs.SUPPORT_EPOCHS + 1; // epoch 802 for creationEpoch 800 (threshold check)
-
-  // When voting === true, startEpoch is when voting phase will start (in the future)
-  // Before startEpoch, the proposal is in discussion phase
-  // When voting === false, calculate phases based on creationEpoch
-  const phaseBaseEpoch = creationEpoch + epochs.SUPPORT_EPOCHS + 1; // epoch 802 for creationEpoch 800
-  const discussionStartEpoch = phaseBaseEpoch; // epoch 802 for creationEpoch 800
-  const discussionEndEpoch = phaseBaseEpoch + epochs.DISCUSSION_EPOCHS; // epoch 804 for creationEpoch 800
-  const snapshotEpoch =
-    phaseBaseEpoch + epochs.DISCUSSION_EPOCHS + epochs.SNAPSHOT_EPOCHS; // epoch 805 for creationEpoch 800
+  const {
+    supportStartEpoch,
+    supportEndEpoch,
+    discussionStartEpoch,
+    discussionEndEpoch,
+    snapshotEpoch,
+  } = getProposalPhaseEpochs(creationEpoch, epochs);
   // When voting === false, voting starts right after snapshot phase
   // When voting === true, use startEpoch directly as the voting start epoch
   const votingStartEpoch = voting ? startEpoch : snapshotEpoch + 1; // epoch 806 for creationEpoch 800 (or startEpoch if voting = true)

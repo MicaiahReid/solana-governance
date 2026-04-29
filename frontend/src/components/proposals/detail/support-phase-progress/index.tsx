@@ -10,7 +10,10 @@ import {
   useEpochToDate,
 } from "@/hooks";
 import { useGovernanceConfigContext } from "@/contexts/GovernanceConfigContext";
-import { epochConstantsFromGovernanceConfig } from "@/lib/proposals";
+import {
+  epochConstantsFromGovernanceConfig,
+  getProposalPhaseEpochs,
+} from "@/lib/proposals";
 import { NotificationButton } from "./NotificationButton";
 import { PhaseStatusBadge } from "./PhaseStatusBadge";
 import { SupportDonut } from "./SupportDonut";
@@ -44,21 +47,16 @@ export function SupportPhaseProgress({ proposal }: SupportPhaseProgressProps) {
   const hasEnded =
     proposal.status === "failed" || proposal.status === "finalized";
 
-  // Calculate target epoch: creationEpoch + SUPPORT_EPOCHS
-  const targetEpoch =
+  const phaseEpochs =
     epochs !== undefined
-      ? proposal.creationEpoch + epochs.SUPPORT_EPOCHS
+      ? getProposalPhaseEpochs(proposal.creationEpoch, epochs)
       : undefined;
 
   const { data: supportEndsAt, isLoading: isLoadingEpochDate } =
-    useEpochToDate(targetEpoch);
+    useEpochToDate(phaseEpochs?.supportEndEpoch);
 
   const { data: discussionEndsAt, isLoading: isLoadingDiscussionEpochDate } =
-    useEpochToDate(
-      epochs !== undefined && targetEpoch !== undefined
-        ? targetEpoch + epochs.DISCUSSION_EPOCHS
-        : undefined,
-    );
+    useEpochToDate(phaseEpochs?.discussionEndEpoch);
 
   const supportFilters = buildSupportFilters(
     proposal.publicKey.toBase58(),
@@ -148,8 +146,8 @@ export function SupportPhaseProgress({ proposal }: SupportPhaseProgressProps) {
   const bannerMessage = stats.isThresholdMet
     ? "Support threshold reached! Proposal advancing to next phase."
     : `This proposal is nearing its support threshold. Only ${formatSOL(
-        stats.remainingLamports,
-      )} SOL needed!`;
+      stats.remainingLamports,
+    )} SOL needed!`;
 
   return (
     <div className="glass-card flex h-full flex-col p-6 md:p-6 lg:p-8">
@@ -251,12 +249,13 @@ export function SupportPhaseProgress({ proposal }: SupportPhaseProgressProps) {
             />
 
             {/* Time Remaining Carousel */}
-            <TimeRemainingCarousel
-              lifecycleStage={proposal.status}
-              supportToDiscussionEnd={supportEndsAt || new Date()}
-              discussionToVotingEnd={discussionEndsAt || new Date()}
-              hasEnded={hasEnded}
-            />
+            {supportEndsAt &&
+              discussionEndsAt && <TimeRemainingCarousel
+                lifecycleStage={proposal.status}
+                supportToDiscussionEnd={supportEndsAt}
+                discussionToVotingEnd={discussionEndsAt}
+                hasEnded={hasEnded}
+              />}
 
             {/* Validator Participation */}
             <StatCard
